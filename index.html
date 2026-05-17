@@ -2332,10 +2332,21 @@ function runAIAnalysis(suffix){
     loading.style.display='none';
     btn.disabled=false;
     var text='';
-    try{text=data.candidates[0].content.parts[0].text.trim();}
-    catch(e){throw new Error('Unexpected API response format');}
+    try{
+      // Check for API-level error first
+      if(data.error){throw new Error('API error: '+data.error.message);}
+      text=data.candidates[0].content.parts[0].text.trim();
+    }catch(e){
+      console.error('Gemini raw response:',JSON.stringify(data));
+      throw new Error(e.message);
+    }
     text=text.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
-    var json=JSON.parse(text);
+    var json;
+    try{json=JSON.parse(text);}
+    catch(e){
+      console.error('Gemini text was:',text);
+      throw new Error('Could not parse response as JSON');
+    }
     renderAIResult(json, suffix);
     result.style.display='block';
   })
