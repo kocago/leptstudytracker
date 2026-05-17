@@ -6,6 +6,15 @@
 <title>LEPT Tracker — Board Exam Review Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<!-- Firebase SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-app.js";
+  import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-firestore.js";
+  import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.13.0/firebase-auth.js";
+  window.__fbReady = false;
+  window.__fbModules = { initializeApp, getFirestore, doc, setDoc, getDoc, getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged };
+  window.dispatchEvent(new Event('fbmodules'));
+</script>
 <style>
 :root {
   --bg: #0d0f14;
@@ -133,9 +142,6 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
 .sidebar-overlay.open{display:block;}
 
 /* ─── PANE SYSTEM ─────────────────────────────────────────────── */
-.pane{display:none;padding:2rem 2.5rem;animation:paneIn 0.22s ease;}
-.pane.active{display:block;}
-@keyframes paneIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
 .pane-header{
   display:flex;align-items:flex-start;justify-content:space-between;
   gap:1rem;margin-bottom:1.75rem;
@@ -180,7 +186,6 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
 .chart-ref-label{position:absolute;right:0;font-size:0.6rem;color:var(--pass);font-family:'Space Mono',monospace;transform:translateY(-100%);}
 .bar-group{flex:1;display:flex;flex-direction:column;align-items:center;gap:0;}
 .bar-stack{display:flex;flex-direction:column-reverse;align-items:stretch;width:100%;gap:1px;}
-.bar-seg{border-radius:2px 2px 0 0;min-height:2px;transition:height 0.4s ease;}
 .bar-week-label{font-size:0.57rem;color:var(--muted);font-family:'Space Mono',monospace;margin-top:4px;white-space:nowrap;}
 .chart-empty{height:140px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:0.8rem;}
 
@@ -188,20 +193,18 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
 .acc-row{display:flex;align-items:center;gap:0.85rem;margin-bottom:0.75rem;}
 .acc-label{font-size:0.72rem;font-family:'Space Mono',monospace;width:30px;color:var(--muted2);}
 .acc-track{flex:1;height:12px;background:var(--bg3);border-radius:999px;overflow:hidden;position:relative;}
-.acc-fill{height:100%;border-radius:999px;transition:width 0.6s ease;}
 .acc-val{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:0.95rem;min-width:46px;text-align:right;}
 .acc-pass-marker{position:absolute;top:0;bottom:0;width:2px;background:var(--pass);opacity:0.7;}
 
 /* ─── HEATMAP ─────────────────────────────────────────────────── */
 .heatmap-wrap{overflow-x:auto;}
 .heatmap-grid{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,13px);gap:3px;width:max-content;}
-.hm-cell{width:13px;height:13px;border-radius:2px;background:var(--bg3);cursor:default;transition:transform 0.1s;}
+.hm-legend{display:flex;align-items:center;gap:0.35rem;font-size:0.65rem;color:var(--muted);margin-top:0.6rem;justify-content:flex-end;font-family:'Space Mono',monospace;}
 .hm-cell:hover{transform:scale(1.3);}
 .hm-cell.l1{background:rgba(52,211,153,0.18);}
 .hm-cell.l2{background:rgba(52,211,153,0.38);}
 .hm-cell.l3{background:rgba(52,211,153,0.6);}
 .hm-cell.l4{background:rgba(52,211,153,0.85);}
-.hm-legend{display:flex;align-items:center;gap:0.35rem;font-size:0.65rem;color:var(--muted);margin-top:0.6rem;justify-content:flex-end;font-family:'Space Mono',monospace;}
 .hm-legend .sw{width:10px;height:10px;border-radius:2px;}
 
 /* ─── RANK CARD ───────────────────────────────────────────────── */
@@ -304,9 +307,6 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
 .btn-danger:hover{background:rgba(248,113,113,0.2);}
 .btn-sm{padding:0.35rem 0.75rem;font-size:0.73rem;}
 .btn-row{display:flex;gap:0.6rem;margin-top:1rem;flex-wrap:wrap;}
-.toast-msg{padding:0.6rem 1rem;border-radius:7px;font-size:0.82rem;margin-top:0.75rem;display:none;}
-.toast-ok{display:block;background:var(--pass-dim);color:var(--pass);border:1px solid rgba(52,211,153,0.3);}
-.toast-err{display:block;background:var(--danger-dim);color:var(--danger);border:1px solid rgba(248,113,113,0.3);}
 
 /* ─── LOG TABS ────────────────────────────────────────────────── */
 .log-tabs{display:flex;gap:0.25rem;background:var(--bg3);padding:0.3rem;border-radius:8px;margin-bottom:1.5rem;width:fit-content;max-width:100%;}
@@ -368,6 +368,148 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--bg3);border-radius:4px;}
+
+/* ─── PANE ANIMATIONS ─────────────────────────────────────────── */
+.pane{display:none;padding:2rem 2.5rem;animation:paneIn 0.32s cubic-bezier(0.22,1,0.36,1);}
+.pane.active{display:block;}
+@keyframes paneIn{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+.pane .card,.pane .rank-card,.pane .grid-4,.pane .dash-layout,.pane .log-layout,.pane .error-layout{
+  animation:cardReveal 0.4s cubic-bezier(0.22,1,0.36,1) both;
+}
+.pane .grid-4 > .card:nth-child(1){animation-delay:0.05s;}
+.pane .grid-4 > .card:nth-child(2){animation-delay:0.10s;}
+.pane .grid-4 > .card:nth-child(3){animation-delay:0.15s;}
+.pane .grid-4 > .card:nth-child(4){animation-delay:0.20s;}
+.pane .dash-main > .card:nth-child(1){animation-delay:0.12s;}
+.pane .dash-main > .card:nth-child(2){animation-delay:0.18s;}
+.pane .dash-side > .card:nth-child(1){animation-delay:0.22s;}
+.pane .dash-side > .card:nth-child(2){animation-delay:0.28s;}
+@keyframes cardReveal{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+
+/* ─── DASHBOARD IDLE BACKGROUND ORBS ─────────────────────────── */
+.orb-canvas{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);opacity:0.045;animation:orbDrift linear infinite;}
+.orb-1{width:520px;height:520px;background:var(--ge);top:-120px;left:-100px;animation-duration:28s;animation-delay:0s;}
+.orb-2{width:400px;height:400px;background:var(--pe);bottom:-100px;right:-80px;animation-duration:22s;animation-delay:-8s;}
+.orb-3{width:300px;height:300px;background:var(--ms);top:40%;left:55%;animation-duration:18s;animation-delay:-4s;}
+@keyframes orbDrift{
+  0%{transform:translate(0,0) scale(1);}
+  33%{transform:translate(30px,-40px) scale(1.07);}
+  66%{transform:translate(-20px,25px) scale(0.95);}
+  100%{transform:translate(0,0) scale(1);}
+}
+
+/* ─── COUNT-UP ANIMATION ──────────────────────────────────────── */
+.countup-animate{transition:color 0.4s;}
+
+/* ─── ACC BAR ANIMATE ─────────────────────────────────────────── */
+.acc-fill{height:100%;border-radius:999px;transition:width 0.9s cubic-bezier(0.22,1,0.36,1);}
+
+/* ─── HEATMAP STAGGER ─────────────────────────────────────────── */
+.hm-cell{width:13px;height:13px;border-radius:2px;background:var(--bg3);cursor:default;transition:transform 0.1s;opacity:0;animation:hmFadeIn 0.3s ease forwards;}
+@keyframes hmFadeIn{to{opacity:1;}}
+
+/* ─── CHART BAR GROW ──────────────────────────────────────────── */
+.bar-seg{border-radius:2px 2px 0 0;min-height:2px;transform-origin:bottom;animation:barGrow 0.6s cubic-bezier(0.22,1,0.36,1) both;}
+@keyframes barGrow{from{transform:scaleY(0);opacity:0;}to{transform:scaleY(1);opacity:1;}}
+
+/* ─── LOG SUCCESS PULSE ───────────────────────────────────────── */
+.btn-primary.success-pulse{animation:successPulse 0.5s ease;}
+@keyframes successPulse{
+  0%{box-shadow:0 0 0 0 rgba(52,211,153,0.7);}
+  70%{box-shadow:0 0 0 14px rgba(52,211,153,0);}
+  100%{box-shadow:0 0 0 0 rgba(52,211,153,0);}
+}
+
+/* ─── TOAST SLIDE-UP ──────────────────────────────────────────── */
+.toast-msg{padding:0.6rem 1rem;border-radius:7px;font-size:0.82rem;margin-top:0.75rem;display:none;animation:toastIn 0.3s cubic-bezier(0.22,1,0.36,1);}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.toast-ok{display:block;background:var(--pass-dim);color:var(--pass);border:1px solid rgba(52,211,153,0.3);}
+.toast-err{display:block;background:var(--danger-dim);color:var(--danger);border:1px solid rgba(248,113,113,0.3);}
+
+/* ─── RANK-UP OVERLAY ─────────────────────────────────────────── */
+#rankup-overlay{
+  display:none;position:fixed;inset:0;z-index:9999;
+  background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);
+  align-items:center;justify-content:center;flex-direction:column;
+}
+#rankup-overlay.show{display:flex;animation:ruFadeIn 0.4s ease;}
+@keyframes ruFadeIn{from{opacity:0;}to{opacity:1;}}
+.rankup-badge{
+  text-align:center;animation:ruBadgePop 0.6s cubic-bezier(0.34,1.56,0.64,1) 0.2s both;
+}
+@keyframes ruBadgePop{from{opacity:0;transform:scale(0.5);}to{opacity:1;transform:scale(1);}}
+.rankup-glow{
+  font-size:4rem;margin-bottom:1rem;
+  filter:drop-shadow(0 0 24px currentColor);
+  animation:ruGlow 1.5s ease-in-out infinite alternate;
+}
+@keyframes ruGlow{from{filter:drop-shadow(0 0 12px gold);}to{filter:drop-shadow(0 0 40px gold);}}
+.rankup-title{font-family:'Space Grotesk',sans-serif;font-size:0.75rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--muted2);margin-bottom:0.4rem;}
+.rankup-name{font-family:'Space Grotesk',sans-serif;font-size:2.8rem;font-weight:800;line-height:1;margin-bottom:0.6rem;}
+.rankup-level{font-family:'Space Mono',monospace;font-size:0.8rem;color:var(--muted2);}
+.rankup-dismiss{margin-top:2rem;background:none;border:1px solid var(--border2);color:var(--text);border-radius:8px;padding:0.6rem 1.6rem;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;font-size:0.85rem;transition:border-color 0.15s;}
+.rankup-dismiss:hover{border-color:var(--pass);}
+/* Confetti particles */
+.ru-particle{position:absolute;width:8px;height:8px;border-radius:2px;animation:ruParticle 1.2s ease-out forwards;}
+@keyframes ruParticle{
+  0%{opacity:1;transform:translate(0,0) rotate(0deg);}
+  100%{opacity:0;transform:translate(var(--tx),var(--ty)) rotate(var(--rot));}
+}
+
+/* ─── ONBOARDING OVERLAY ──────────────────────────────────────── */
+#onboarding-overlay{
+  display:none;position:fixed;inset:0;z-index:8000;
+  background:rgba(0,0,0,0.9);backdrop-filter:blur(10px);
+  align-items:center;justify-content:center;
+}
+#onboarding-overlay.show{display:flex;animation:ruFadeIn 0.4s ease;}
+.onboarding-modal{
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:16px;padding:2.5rem;
+  width:520px;max-width:92vw;max-height:85vh;overflow-y:auto;
+  position:relative;
+  animation:ruBadgePop 0.5s cubic-bezier(0.34,1.56,0.64,1);
+}
+.ob-step{display:none;}
+.ob-step.active{display:block;}
+.ob-icon{font-size:2.8rem;margin-bottom:1rem;}
+.ob-title{font-family:'Space Grotesk',sans-serif;font-size:1.5rem;font-weight:800;margin-bottom:0.5rem;}
+.ob-desc{font-size:0.88rem;color:var(--muted2);line-height:1.65;margin-bottom:1.5rem;}
+.ob-dots{display:flex;gap:0.4rem;justify-content:center;margin-bottom:1.5rem;}
+.ob-dot{width:7px;height:7px;border-radius:50%;background:var(--bg3);transition:background 0.2s,transform 0.2s;}
+.ob-dot.active{background:var(--pass);transform:scale(1.3);}
+.ob-actions{display:flex;gap:0.75rem;justify-content:space-between;align-items:center;}
+.ob-skip{background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.8rem;font-family:'IBM Plex Sans',sans-serif;text-decoration:underline;}
+.ob-skip:hover{color:var(--text);}
+.ob-next{padding:0.65rem 1.75rem;}
+
+/* ─── FIREBASE AUTH UI ────────────────────────────────────────── */
+#auth-bar{
+  display:flex;align-items:center;gap:0.75rem;
+  margin-left:auto;flex-shrink:0;
+}
+.auth-btn{
+  display:flex;align-items:center;gap:0.5rem;
+  padding:0.45rem 1rem;border-radius:7px;
+  font-size:0.78rem;font-weight:600;cursor:pointer;
+  font-family:'IBM Plex Sans',sans-serif;transition:all 0.15s;
+  border:1px solid var(--border);background:var(--bg3);color:var(--text);
+}
+.auth-btn:hover{border-color:var(--border2);}
+.auth-user-chip{
+  display:flex;align-items:center;gap:0.5rem;
+  font-size:0.75rem;color:var(--muted2);font-family:'Space Mono',monospace;
+}
+.auth-avatar{width:26px;height:26px;border-radius:50%;object-fit:cover;border:1px solid var(--border2);}
+.auth-help-btn{
+  background:none;border:1px solid var(--border);
+  border-radius:50%;width:28px;height:28px;
+  color:var(--muted2);cursor:pointer;font-size:0.75rem;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.15s;flex-shrink:0;
+}
+.auth-help-btn:hover{border-color:var(--border2);color:var(--text);}
 
 /* ─── MOBILE BOTTOM NAV (hidden on desktop) ───────────────────── */
 .mobile-bottom-nav{display:none;}
@@ -472,6 +614,66 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
 </head>
 <body>
 
+<!-- BACKGROUND ORBS -->
+<div class="orb-canvas" aria-hidden="true">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<!-- RANK-UP OVERLAY -->
+<div id="rankup-overlay" role="dialog" aria-modal="true">
+  <div class="rankup-badge">
+    <div class="rankup-glow" id="ru-glow">🎓</div>
+    <div class="rankup-title">Rank Up!</div>
+    <div class="rankup-name" id="ru-name">Scholar</div>
+    <div class="rankup-level" id="ru-level">Level 8 / 12</div>
+  </div>
+  <button class="rankup-dismiss" id="ru-dismiss">Continue →</button>
+</div>
+
+<!-- ONBOARDING OVERLAY -->
+<div id="onboarding-overlay" role="dialog" aria-modal="true">
+  <div class="onboarding-modal">
+    <div class="ob-step active" id="ob-step-0">
+      <div class="ob-icon">🎓</div>
+      <div class="ob-title">Welcome to LEPT Tracker</div>
+      <div class="ob-desc">Your personal Board Exam Review Dashboard. Track your practice sessions, monitor accuracy across GE, PE, and Major Subjects, and watch your rank climb toward <strong>Topnotcher</strong>.</div>
+    </div>
+    <div class="ob-step" id="ob-step-1">
+      <div class="ob-icon">⊞</div>
+      <div class="ob-title">Dashboard</div>
+      <div class="ob-desc">Your home base. See your overall accuracy, study streak, weekly chart, activity heatmap, and rank card — all at a glance. The rank card shows exactly what you need to level up.</div>
+    </div>
+    <div class="ob-step" id="ob-step-2">
+      <div class="ob-icon">✎</div>
+      <div class="ob-title">Log a Session</div>
+      <div class="ob-desc">After every practice set, log it here. Enter your correct/wrong count, duration, and subject. Your accuracy and XP update immediately. You can also log study activities like reading or flashcards.</div>
+    </div>
+    <div class="ob-step" id="ob-step-3">
+      <div class="ob-icon">✗</div>
+      <div class="ob-title">Error Log</div>
+      <div class="ob-desc">Log items you got wrong with the correct reasoning. The tracker surfaces your most repeated mistakes so you know exactly where to focus. Reviewing errors is one of the fastest ways to improve accuracy.</div>
+    </div>
+    <div class="ob-step" id="ob-step-4">
+      <div class="ob-icon">☁️</div>
+      <div class="ob-title">Sign in to Sync</div>
+      <div class="ob-desc">Sign in with Google to save your data to the cloud. Your progress will sync across all your devices automatically — PC, phone, tablet. Without signing in, data is saved locally on this browser only.</div>
+    </div>
+    <div class="ob-dots">
+      <div class="ob-dot active" id="ob-dot-0"></div>
+      <div class="ob-dot" id="ob-dot-1"></div>
+      <div class="ob-dot" id="ob-dot-2"></div>
+      <div class="ob-dot" id="ob-dot-3"></div>
+      <div class="ob-dot" id="ob-dot-4"></div>
+    </div>
+    <div class="ob-actions">
+      <button class="ob-skip" id="ob-skip">Skip intro</button>
+      <button class="btn btn-primary ob-next" id="ob-next">Next →</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════════════════════════════════════
      SITE HEADER
 ══════════════════════════════════════════════════════════════ -->
@@ -488,6 +690,22 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
     <div class="hc-right">
       <div class="hc-label">days remaining</div>
       <div class="hc-date">Sep 20, 2026</div>
+    </div>
+  </div>
+  <div id="auth-bar">
+    <button class="auth-help-btn" id="help-btn" title="How to use">?</button>
+    <div id="auth-signed-out">
+      <button class="auth-btn" id="btn-google-signin">
+        <svg width="14" height="14" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34.5 6.5 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.7-.4-3.9z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.1 18.9 12 24 12c3.1 0 5.8 1.1 7.9 3l5.7-5.7C34.5 6.5 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.4 35.5 26.8 36 24 36c-5.3 0-9.8-3.3-11.4-8H6.1C9.5 35.6 16.3 44 24 44z"/><path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.2 5.6l6.2 5.2C42.2 35.3 44 30 44 24c0-1.3-.1-2.7-.4-3.9z"/></svg>
+        Sign in
+      </button>
+    </div>
+    <div id="auth-signed-in" style="display:none;">
+      <div class="auth-user-chip">
+        <img class="auth-avatar" id="auth-avatar" src="" alt=""/>
+        <span id="auth-name" style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+        <button class="auth-btn" id="btn-signout" style="padding:0.3rem 0.7rem;font-size:0.72rem;">Sign out</button>
+      </div>
     </div>
   </div>
 </header>
@@ -520,7 +738,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
     <div class="sidebar-divider"></div>
     <div class="sidebar-footer">
       LEPT · Sep 20, 2026<br>
-      localStorage · offline
+      <span id="sidebar-sync-status">local · offline</span>
     </div>
   </aside>
 
@@ -901,6 +1119,88 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
 <script>
 (function(){
 'use strict';
+
+/* ══════════════════════════════════════════════════════════════
+   FIREBASE CONFIG — replace with your own from Firebase Console
+══════════════════════════════════════════════════════════════ */
+var FB_CONFIG = {
+  apiKey: "AIzaSyCpMQqLdoiQ-x17vFMvSEcHuPFkyjZRD9M",
+  authDomain: "lept-study-tracker.firebaseapp.com",
+  projectId: "lept-study-tracker",
+  storageBucket: "lept-study-tracker.firebasestorage.app",
+  messagingSenderId: "416465370323",
+  appId: "1:416465370323:web:c44b6de5526ee8a0726826",
+  measurementId: "G-XB220TD5SB"
+};
+var fbApp=null,fbDb=null,fbAuth=null,fbUser=null;
+var fbReady=false;
+
+window.addEventListener('fbmodules',function(){
+  try{
+    var m=window.__fbModules;
+    fbApp=m.initializeApp(FB_CONFIG);
+    fbDb=m.getFirestore(fbApp);
+    fbAuth=m.getAuth(fbApp);
+    fbReady=true;
+    m.onAuthStateChanged(fbAuth,function(user){
+      fbUser=user;
+      if(user){
+        document.getElementById('auth-signed-out').style.display='none';
+        document.getElementById('auth-signed-in').style.display='flex';
+        document.getElementById('auth-name').textContent=user.displayName||user.email||'User';
+        var av=document.getElementById('auth-avatar');
+        if(user.photoURL)av.src=user.photoURL; else av.style.display='none';
+        document.getElementById('sidebar-sync-status').textContent='cloud · synced';
+        fbLoadData();
+      }else{
+        document.getElementById('auth-signed-out').style.display='block';
+        document.getElementById('auth-signed-in').style.display='none';
+        document.getElementById('sidebar-sync-status').textContent='local · offline';
+      }
+    });
+    document.getElementById('btn-google-signin').addEventListener('click',function(){
+      var provider=new m.GoogleAuthProvider();
+      m.signInWithPopup(fbAuth,provider).catch(function(e){console.error('Sign in failed:',e);});
+    });
+    document.getElementById('btn-signout').addEventListener('click',function(){
+      m.signOut(fbAuth);
+    });
+  }catch(e){console.warn('Firebase init failed:',e);}
+});
+
+async function fbSaveData(){
+  if(!fbReady||!fbUser||!fbDb)return;
+  try{
+    var m=window.__fbModules;
+    var ref=m.doc(fbDb,'users',fbUser.uid);
+    await m.setDoc(ref,{data:JSON.stringify(S),updated:Date.now()});
+    document.getElementById('sidebar-sync-status').textContent='cloud · saved';
+  }catch(e){console.warn('FB save error:',e);}
+}
+async function fbLoadData(){
+  if(!fbReady||!fbUser||!fbDb)return;
+  try{
+    var m=window.__fbModules;
+    var ref=m.doc(fbDb,'users',fbUser.uid);
+    var snap=await m.getDoc(ref);
+    if(snap.exists()){
+      var d=snap.data();
+      if(d&&d.data){
+        var p=JSON.parse(d.data);
+        if(p&&p.version===1){
+          S.sessions=Array.isArray(p.sessions)?p.sessions:[];
+          S.activities=Array.isArray(p.activities)?p.activities:[];
+          S.errors=Array.isArray(p.errors)?p.errors:[];
+          fullRender();
+        }
+      }
+    }
+  }catch(e){console.warn('FB load error:',e);}
+}
+
+/* ══════════════════════════════════════════════════════════════
+   STATE & PERSISTENCE
+══════════════════════════════════════════════════════════════ */
 var KEY='lept_tracker_v1';
 function defaultState(){ return {sessions:[],activities:[],errors:[],version:1}; }
 var S=defaultState();
@@ -915,9 +1215,14 @@ function load(){
     S.errors=Array.isArray(p.errors)?p.errors:[];
   }catch(e){S=defaultState();}
 }
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function save(){
+  try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}
+  fbSaveData();
+}
 
-/* ── UTILS ────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   UTILS
+══════════════════════════════════════════════════════════════ */
 function dayKey(d){return d.toISOString().slice(0,10);}
 function today(){return dayKey(new Date());}
 function fmt(d){return new Date(d).toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});}
@@ -932,7 +1237,9 @@ function accColor(pct){
   return 'var(--danger)';
 }
 
-/* ── COUNTDOWN ────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   COUNTDOWN
+══════════════════════════════════════════════════════════════ */
 function renderCountdown(){
   var exam=new Date('2026-09-20');
   var diff=Math.ceil((exam-new Date())/86400000);
@@ -940,7 +1247,9 @@ function renderCountdown(){
   if(el) el.textContent=diff>0?diff:(diff===0?'TODAY':'—');
 }
 
-/* ── ACCURACY ─────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   ACCURACY
+══════════════════════════════════════════════════════════════ */
 function catAccuracy(catId){
   var c=0,w=0;
   S.sessions.forEach(function(s){if(s.cat===catId){c+=s.correct||0;w+=s.wrong||0;}});
@@ -962,7 +1271,9 @@ function weekTrend(){
   return (w1c/w1t*100-w2c/w2t*100).toFixed(1);
 }
 
-/* ── STREAK & STUDY DAYS ──────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   STREAK & STUDY DAYS
+══════════════════════════════════════════════════════════════ */
 function computeStreak(){
   var dates={};
   S.sessions.forEach(function(s){dates[s.date]=true;});
@@ -994,72 +1305,125 @@ function totalStudyWeeks(){
   return Object.keys(weeks).length;
 }
 
-/* ── RANKS ────────────────────────────────────────────────────── */
-/*
-  Progression requires BOTH accuracy AND consistency (active weeks + streak).
-  Much harder than pure accuracy gating.
-
-  Lvl 0  Not Started      — no sessions at all
-  Lvl 1  Just Starting    — has sessions but OA<45% OR <2 active weeks
-  Lvl 2  Grinding         — OA>=45%, >=3 weeks, all subjects have data
-  Lvl 3  Building         — OA>=58%, >=5 weeks, no subject below 50%
-  Lvl 4  Approaching      — OA>=68%, >=8 weeks, no subject below 60%
-  Lvl 5  Passing Average  — OA>=75%, >=10 weeks, >=2 subjects at 75%
-  Lvl 6  Board Ready      — ALL subjects>=75%, >=12 weeks, streak>=7
-*/
-var RANKS=[
-  {level:0,name:'Not Started',color:'var(--muted)',
-   desc:'Log your first practice session to start tracking your journey.',hint:null},
-  {level:1,name:'Just Starting',color:'var(--danger)',
-   desc:'Building the habit — consistency is everything at this stage.',
-   hint:'Study across at least <strong>2 different weeks</strong> and keep your accuracy above 45% to advance.'},
-  {level:2,name:'Grinding',color:'var(--orange)',
-   desc:'Making early progress — make sure all three subjects have sessions.',
-   hint:'Reach <strong>58%+ overall</strong> with data in all 3 subjects, active for <strong>5+ weeks</strong>.'},
-  {level:3,name:'Building',color:'var(--ms)',
-   desc:'Good momentum — start zeroing in on your weakest subject.',
-   hint:'Push to <strong>68%+ overall</strong>, <strong>8+ active weeks</strong>, and keep every subject above 50%.'},
-  {level:4,name:'Approaching',color:'var(--purple)',
-   desc:'Within striking distance of the passing mark — push harder!',
-   hint:'Hit <strong>75%+ overall</strong>, <strong>10+ active weeks</strong>, and no subject below 60%.'},
-  {level:5,name:'Passing Average',color:'var(--pass)',
-   desc:'Overall passing! Now raise every individual subject above 75%.',
-   hint:'Get <strong>all 3 subjects to 75%+</strong> with <strong>12+ active weeks</strong> and a <strong>7-day streak</strong>.'},
-  {level:6,name:'Board Ready',color:'var(--ge)',
-   desc:'All subjects passing — stay sharp and maintain your consistency.',hint:null},
-];
-
-function getProgressRank(){
-  var oa=overallAccuracy();
-  var ge=catAccuracy('ge'),pe=catAccuracy('pe'),ms=catAccuracy('ms');
-  var weeks=totalStudyWeeks(),streak=computeStreak();
-  var allHaveData=ge!==null&&pe!==null&&ms!==null;
-  var allAbove75=allHaveData&&ge>=75&&pe>=75&&ms>=75;
-  var noCatBelow50=allHaveData&&ge>=50&&pe>=50&&ms>=50;
-  var noCatBelow60=allHaveData&&ge>=60&&pe>=60&&ms>=60;
-  var twoAbove75=(ge!==null&&ge>=75?1:0)+(pe!==null&&pe>=75?1:0)+(ms!==null&&ms>=75?1:0)>=2;
-
-  if(S.sessions.length===0)return RANKS[0];
-  if(!oa||oa<45||weeks<2)return RANKS[1];
-  if(oa<58||weeks<5||!allHaveData)return RANKS[2];
-  if(oa<68||weeks<8||!noCatBelow50)return RANKS[3];
-  if(oa<75||weeks<10||!noCatBelow60)return RANKS[4];
-  if(!allAbove75||weeks<12||streak<7)return RANKS[5];
-  return RANKS[6];
+/* ══════════════════════════════════════════════════════════════
+   XP SYSTEM
+   XP per session = base(questions answered) + accuracy multiplier + streak bonus
+   Accuracy <50% = 0.4x; 50-64% = 0.7x; 65-74% = 0.9x; 75-84% = 1.2x; 85%+ = 1.5x
+   Streak bonus: +10 per 7-day streak tier (7=+10, 14=+20, etc, max +50)
+   Activities = 5 XP per 30 min
+══════════════════════════════════════════════════════════════ */
+function computeXP(){
+  var xp=0;
+  S.sessions.forEach(function(s){
+    var total=(s.correct||0)+(s.wrong||0);
+    if(total===0)return;
+    var acc=total>0?(s.correct||0)/total*100:0;
+    var base=Math.min(total,100)*0.6;
+    var mult=acc>=85?1.5:acc>=75?1.2:acc>=65?0.9:acc>=50?0.7:0.4;
+    xp+=base*mult;
+  });
+  S.activities.forEach(function(a){
+    xp+=Math.floor((a.min||0)/30)*5;
+  });
+  var streak=computeStreak();
+  var streakBonus=Math.min(Math.floor(streak/7)*10,50);
+  xp+=streakBonus;
+  return Math.round(xp);
 }
 
+/* ══════════════════════════════════════════════════════════════
+   RANKS — 12 levels, XP-based with accuracy gates
+══════════════════════════════════════════════════════════════ */
+var RANKS=[
+  {level:0,name:'Not Started',     color:'var(--muted)',  xpReq:0,    emoji:'📋',
+   desc:'Log your first practice session to begin your journey.',hint:null},
+  {level:1,name:'Enrollee',        color:'var(--danger)', xpReq:0,    emoji:'📝',
+   desc:'First steps — build the habit of logging every session.',
+   hint:'Reach <strong>100 XP</strong> and above <strong>40% accuracy</strong> to advance.'},
+  {level:2,name:'Freshman',        color:'var(--danger)', xpReq:100,  emoji:'📚',
+   desc:'Getting started — make sure all three subjects have sessions.',
+   hint:'Reach <strong>250 XP</strong> with data in all 3 subjects and above <strong>50%</strong>.'},
+  {level:3,name:'Sophomore',       color:'var(--orange)', xpReq:250,  emoji:'✏️',
+   desc:'Building early momentum — keep every session consistent.',
+   hint:'Reach <strong>500 XP</strong> and push overall accuracy above <strong>55%</strong>.'},
+  {level:4,name:'Junior',          color:'var(--orange)', xpReq:500,  emoji:'📖',
+   desc:'Halfway there — start identifying your weakest subject.',
+   hint:'Reach <strong>900 XP</strong> with <strong>60%+ accuracy</strong> across all subjects.'},
+  {level:5,name:'Senior',          color:'var(--ms)',     xpReq:900,  emoji:'🎯',
+   desc:'Strong foundation — within range of the passing mark.',
+   hint:'Reach <strong>1,400 XP</strong> and push overall to <strong>65%+</strong>.'},
+  {level:6,name:'Graduate',        color:'var(--ms)',     xpReq:1400, emoji:'🏅',
+   desc:'Approaching passing — no subject should be below 60% now.',
+   hint:'Reach <strong>2,100 XP</strong> with overall accuracy above <strong>70%</strong>.'},
+  {level:7,name:'Reviewer',        color:'var(--purple)', xpReq:2100, emoji:'🔬',
+   desc:'Serious contender — keep all three subjects climbing.',
+   hint:'Reach <strong>3,000 XP</strong>, overall <strong>75%+</strong>, and a <strong>5-day streak</strong>.'},
+  {level:8,name:'Scholar',         color:'var(--purple)', xpReq:3000, emoji:'🧠',
+   desc:'Passing overall — now raise every individual subject above 75%.',
+   hint:'Reach <strong>4,200 XP</strong> with all subjects at <strong>72%+</strong> and a <strong>7-day streak</strong>.'},
+  {level:9,name:'Candidate',       color:'var(--pass)',   xpReq:4200, emoji:'⭐',
+   desc:'Board exam ready — all three subjects must clear 75%.',
+   hint:'Reach <strong>5,800 XP</strong> with <strong>all 3 subjects at 75%+</strong> and a <strong>10-day streak</strong>.'},
+  {level:10,name:'Board Passer',   color:'var(--pass)',   xpReq:5800, emoji:'🏆',
+   desc:'All subjects passing — now push for elite-level scores.',
+   hint:'Reach <strong>7,800 XP</strong> with all subjects <strong>80%+</strong> and a <strong>14-day streak</strong>.'},
+  {level:11,name:'Distinguished',  color:'var(--ge)',     xpReq:7800, emoji:'💎',
+   desc:'Elite performance — one final push to the top.',
+   hint:'Reach <strong>10,000 XP</strong> with all subjects <strong>85%+</strong> and a <strong>21-day streak</strong>.'},
+  {level:12,name:'Topnotcher',     color:'#FFD700',       xpReq:10000,emoji:'👑',
+   desc:'The pinnacle. All subjects above 85%, maximum consistency. You are exam-ready.',hint:null},
+];
+
+function getXPRank(xp,oa,ge,pe,ms,streak){
+  var allHaveData=ge!==null&&pe!==null&&ms!==null;
+  if(S.sessions.length===0)return RANKS[0];
+  // Find highest level the user qualifies for based on XP + accuracy gates
+  var level=1;
+  if(xp>=100&&(oa||0)>=40) level=2;
+  if(xp>=250&&(oa||0)>=50&&allHaveData) level=3;
+  if(xp>=500&&(oa||0)>=55) level=4;
+  if(xp>=900&&allHaveData&&(ge||0)>=60&&(pe||0)>=60&&(ms||0)>=60) level=5;
+  if(xp>=1400&&(oa||0)>=65) level=6;
+  if(xp>=2100&&(oa||0)>=70&&allHaveData&&(ge||0)>=60&&(pe||0)>=60&&(ms||0)>=60) level=7;
+  if(xp>=3000&&(oa||0)>=75&&streak>=5) level=8;
+  if(xp>=4200&&allHaveData&&(ge||0)>=72&&(pe||0)>=72&&(ms||0)>=72&&streak>=7) level=9;
+  if(xp>=5800&&allHaveData&&(ge||0)>=75&&(pe||0)>=75&&(ms||0)>=75&&streak>=10) level=10;
+  if(xp>=7800&&allHaveData&&(ge||0)>=80&&(pe||0)>=80&&(ms||0)>=80&&streak>=14) level=11;
+  if(xp>=10000&&allHaveData&&(ge||0)>=85&&(pe||0)>=85&&(ms||0)>=85&&streak>=21) level=12;
+  return RANKS[level];
+}
+
+var _lastRankLevel=-1;
 function renderProgressRank(){
-  var rank=getProgressRank();
-  var geAcc=catAccuracy('ge'),peAcc=catAccuracy('pe'),msAcc=catAccuracy('ms');
-  var weeks=totalStudyWeeks(),streak=computeStreak();
+  var oa=overallAccuracy();
+  var ge=catAccuracy('ge'),pe=catAccuracy('pe'),ms=catAccuracy('ms');
+  var streak=computeStreak();
+  var xp=computeXP();
+  var rank=getXPRank(xp,oa,ge,pe,ms,streak);
+
+  // Rank-up detection
+  if(_lastRankLevel>=0&&rank.level>_lastRankLevel){
+    showRankUpOverlay(rank);
+  }
+  _lastRankLevel=rank.level;
+
   var card=document.getElementById('rank-card');
   card.style.setProperty('--rank-color',rank.color);
-  var stepsHTML=RANKS.map(function(r,i){
+
+  // XP progress to next level
+  var nextRank=RANKS[Math.min(rank.level+1,12)];
+  var xpForThis=rank.xpReq;
+  var xpForNext=nextRank.xpReq;
+  var xpPct=rank.level>=12?100:Math.min(100,((xp-xpForThis)/(xpForNext-xpForThis))*100);
+
+  var stepsHTML=RANKS.slice(1).map(function(r,i){
+    var realLevel=i+1;
     var cls='rank-step';
-    if(i<rank.level)cls+=' done';
-    else if(i===rank.level)cls+=' current';
-    return '<div class="'+cls+'" title="Level '+i+': '+r.name+'"></div>';
+    if(realLevel<rank.level)cls+=' done';
+    else if(realLevel===rank.level)cls+=' current';
+    return '<div class="'+cls+'" title="Lvl '+realLevel+': '+r.name+'"></div>';
   }).join('');
+
   function chip(cat,acc){
     var col=acc!==null?accColor(acc):'var(--muted)';
     var icon=acc===null?'':acc>=75?'✓':'✗';
@@ -1073,30 +1437,123 @@ function renderProgressRank(){
   var hintHTML=rank.hint
     ?'<div class="rank-next-hint">🎯 <strong>To advance:</strong> '+rank.hint+'</div>'
     :'';
+  var xpBarHTML=rank.level<12
+    ?'<div style="margin-top:0.65rem;">'
+      +'<div style="display:flex;justify-content:space-between;font-size:0.62rem;color:var(--muted);font-family:\'Space Mono\',monospace;margin-bottom:0.3rem;">'
+        +'<span>XP: <strong style="color:var(--text);">'+xp+'</strong></span>'
+        +'<span>Next: <strong style="color:var(--text);">'+xpForNext+'</strong></span>'
+      +'</div>'
+      +'<div style="height:6px;background:var(--bg3);border-radius:999px;overflow:hidden;">'
+        +'<div style="height:100%;width:'+xpPct.toFixed(1)+'%;background:'+rank.color+';border-radius:999px;transition:width 0.8s cubic-bezier(0.22,1,0.36,1);"></div>'
+      +'</div>'
+    +'</div>'
+    :'<div style="margin-top:0.5rem;font-size:0.75rem;color:'+rank.color+';font-family:\'Space Mono\',monospace;">👑 Maximum rank achieved</div>';
+
   card.innerHTML=
     '<div class="rank-header">'
       +'<div class="rank-left">'
         +'<div class="rank-meta-label">Current Rank</div>'
-        +'<div class="rank-name">'+rank.name+'</div>'
+        +'<div class="rank-name">'+rank.emoji+' '+rank.name+'</div>'
       +'</div>'
       +'<div class="rank-badge">'
         +'<span class="rank-level-num">'+rank.level+'</span>'
-        +'<span class="rank-level-denom">&thinsp;/ 6</span>'
+        +'<span class="rank-level-denom">&thinsp;/ 12</span>'
       +'</div>'
     +'</div>'
     +'<div class="rank-steps">'+stepsHTML+'</div>'
     +'<div class="rank-desc">'+rank.desc+'</div>'
     +hintHTML
-    +'<div class="rank-footer-row">'
-      +'<div class="rank-subject-row">'+chip('ge',geAcc)+chip('pe',peAcc)+chip('ms',msAcc)+'</div>'
+    +xpBarHTML
+    +'<div class="rank-footer-row" style="margin-top:0.85rem;">'
+      +'<div class="rank-subject-row">'+chip('ge',ge)+chip('pe',pe)+chip('ms',ms)+'</div>'
       +'<div class="rank-consistency">'
-        +'<span>📅 <strong>'+weeks+'</strong> wks active</span>'
-        +'<span>🔥 <strong style="color:var(--ms);">'+streak+'</strong> day streak</span>'
+        +'<span>📅 <strong>'+totalStudyWeeks()+'</strong> wks</span>'
+        +'<span>🔥 <strong style="color:var(--ms);">'+streak+'</strong> streak</span>'
+        +'<span>⚡ <strong style="color:var(--purple);">'+xp+'</strong> XP</span>'
       +'</div>'
     +'</div>';
 }
 
-/* ── WEEKLY CHART ─────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   RANK-UP OVERLAY
+══════════════════════════════════════════════════════════════ */
+function showRankUpOverlay(rank){
+  var overlay=document.getElementById('rankup-overlay');
+  document.getElementById('ru-glow').textContent=rank.emoji||'🎓';
+  document.getElementById('ru-name').textContent=rank.name;
+  document.getElementById('ru-name').style.color=rank.color;
+  document.getElementById('ru-level').textContent='Level '+rank.level+' / 12';
+  overlay.classList.add('show');
+  // Confetti
+  for(var i=0;i<30;i++){spawnParticle(overlay);}
+}
+function spawnParticle(parent){
+  var p=document.createElement('div');
+  p.className='ru-particle';
+  var colors=['#22d3ee','#f472b6','#fbbf24','#34d399','#a78bfa','#fb923c'];
+  p.style.background=colors[Math.floor(Math.random()*colors.length)];
+  p.style.left=(20+Math.random()*60)+'%';
+  p.style.top=(30+Math.random()*40)+'%';
+  p.style.setProperty('--tx',(Math.random()*200-100)+'px');
+  p.style.setProperty('--ty',(Math.random()*200-100)+'px');
+  p.style.setProperty('--rot',Math.random()*720+'deg');
+  p.style.animationDuration=(0.8+Math.random()*0.6)+'s';
+  parent.appendChild(p);
+  setTimeout(function(){p.remove();},1400);
+}
+document.getElementById('ru-dismiss').addEventListener('click',function(){
+  document.getElementById('rankup-overlay').classList.remove('show');
+});
+
+/* ══════════════════════════════════════════════════════════════
+   ONBOARDING
+══════════════════════════════════════════════════════════════ */
+var obStep=0;var OB_TOTAL=5;
+function showOnboarding(){
+  document.getElementById('onboarding-overlay').classList.add('show');
+  setObStep(0);
+}
+function hideOnboarding(){
+  document.getElementById('onboarding-overlay').classList.remove('show');
+  localStorage.setItem('lept_onboarded','1');
+}
+function setObStep(n){
+  obStep=n;
+  for(var i=0;i<OB_TOTAL;i++){
+    document.getElementById('ob-step-'+i).classList.toggle('active',i===n);
+    document.getElementById('ob-dot-'+i).classList.toggle('active',i===n);
+  }
+  var btn=document.getElementById('ob-next');
+  btn.textContent=n===OB_TOTAL-1?'Get started ✓':'Next →';
+}
+document.getElementById('ob-next').addEventListener('click',function(){
+  if(obStep>=OB_TOTAL-1){hideOnboarding();}else{setObStep(obStep+1);}
+});
+document.getElementById('ob-skip').addEventListener('click',hideOnboarding);
+document.getElementById('help-btn').addEventListener('click',showOnboarding);
+
+/* ══════════════════════════════════════════════════════════════
+   COUNT-UP ANIMATION
+══════════════════════════════════════════════════════════════ */
+function animateCountUp(el,target,suffix,duration){
+  if(!el)return;
+  suffix=suffix||'';
+  var start=0;var startTime=null;
+  var isFloat=String(target).indexOf('.')>-1;
+  function step(ts){
+    if(!startTime)startTime=ts;
+    var progress=Math.min((ts-startTime)/duration,1);
+    var ease=1-Math.pow(1-progress,3);
+    var val=isFloat?(start+(target-start)*ease).toFixed(1):(Math.round(start+(target-start)*ease));
+    el.textContent=val+suffix;
+    if(progress<1)requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   WEEKLY CHART
+══════════════════════════════════════════════════════════════ */
 function getWeeklyData(){
   var weeks=[],now=new Date();now.setHours(0,0,0,0);
   var dow=now.getDay(),monOff=dow===0?-6:1-dow;
@@ -1126,16 +1583,17 @@ function renderWeeklyChart(){
   refEl.innerHTML='<span class="chart-ref-label">75%</span>';
   wrap.style.position='relative';
   wrap.appendChild(refEl);
-  weeks.forEach(function(w){
+  weeks.forEach(function(w,wi){
     var group=document.createElement('div');group.className='bar-group';
     var stack=document.createElement('div');stack.className='bar-stack';
-    ['ge','pe','ms'].forEach(function(cat){
+    ['ge','pe','ms'].forEach(function(cat,ci){
       if(w[cat].t>0){
         var pct=w[cat].c/w[cat].t;
         var seg=document.createElement('div');seg.className='bar-seg';
         seg.style.height=Math.round(pct*maxH*0.85)+'px';
         seg.style.backgroundColor=cat==='ge'?'#22d3ee':cat==='pe'?'#f472b6':'#fbbf24';
         seg.style.opacity='0.8';
+        seg.style.animationDelay=(wi*0.04+ci*0.02)+'s';
         seg.title=catLabel(cat)+' '+w[cat].c+'/'+w[cat].t+' ('+Math.round(pct*100)+'%)';
         stack.appendChild(seg);
       }
@@ -1145,7 +1603,9 @@ function renderWeeklyChart(){
   });
 }
 
-/* ── HEATMAP ──────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   HEATMAP
+══════════════════════════════════════════════════════════════ */
 function renderHeatmap(){
   var wrap=document.getElementById('heatmap');wrap.innerHTML='';
   var dates={};
@@ -1154,48 +1614,56 @@ function renderHeatmap(){
   var now=new Date();now.setHours(0,0,0,0);
   var endSat=new Date(now);endSat.setDate(now.getDate()+(6-now.getDay()));
   var start=new Date(endSat);start.setDate(endSat.getDate()-16*7+1);
+  var idx=0;
   for(var col=0;col<16;col++){
     for(var row=0;row<7;row++){
       var d=new Date(start);d.setDate(start.getDate()+col*7+row);
       var k=dayKey(d),v=dates[k]||0;
       var cell=document.createElement('div');
       cell.className='hm-cell'+(v===0?'':v<1?' l1':v<2?' l2':v<4?' l3':' l4');
+      cell.style.animationDelay=(idx*0.004)+'s';
       cell.title=k+(v>0?' · '+Math.round(v)+' entries':'');
       wrap.appendChild(cell);
+      idx++;
     }
   }
 }
 
-/* ── DASHBOARD RENDER ─────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   DASHBOARD RENDER
+══════════════════════════════════════════════════════════════ */
 function renderDashboard(){
   renderCountdown();
   renderProgressRank();
   var oa=overallAccuracy();
-  document.getElementById('dash-overall-acc').textContent=oa!==null?(oa.toFixed(1)+'%'):'—';
-  document.getElementById('dash-overall-acc').style.color=oa!==null?accColor(oa):'var(--text)';
+  var oaEl=document.getElementById('dash-overall-acc');
+  if(oa!==null){
+    animateCountUp(oaEl,oa,'%',800);
+    oaEl.style.color=accColor(oa);
+  }else{oaEl.textContent='—';oaEl.style.color='var(--text)';}
   var trend=weekTrend(),trendEl=document.getElementById('dash-overall-trend');
   if(trend!==null){
     var up=parseFloat(trend)>=0;
     trendEl.innerHTML='<span class="card-trend '+(up?'trend-up':'trend-down')+'">'+(up?'↑':'↓')+Math.abs(trend)+'% vs last week</span>';
   }else{trendEl.innerHTML='';}
-  document.getElementById('dash-streak').textContent=computeStreak();
-  document.getElementById('dash-total-days').textContent=totalStudyDays();
+  animateCountUp(document.getElementById('dash-streak'),computeStreak(),'',600);
+  animateCountUp(document.getElementById('dash-total-days'),totalStudyDays(),'',700);
   document.getElementById('dash-total-sessions').textContent=S.sessions.length+' sessions';
   var totalQ=0,totalMin=0;
   S.sessions.forEach(function(s){totalQ+=(s.correct||0)+(s.wrong||0);if(s.min)totalMin+=parseFloat(s.min)||0;});
   S.activities.forEach(function(a){if(a.min)totalMin+=parseFloat(a.min)||0;});
-  document.getElementById('dash-total-q').textContent=totalQ;
+  animateCountUp(document.getElementById('dash-total-q'),totalQ,'',800);
   document.getElementById('dash-total-min-sub').textContent=Math.round(totalMin)+' min studied';
-  document.getElementById('dash-total-min').textContent=Math.round(totalMin);
-  document.getElementById('dash-total-errors').textContent=S.errors.length;
-  document.getElementById('dash-total-acts').textContent=S.activities.length;
-  document.getElementById('dash-total-sess').textContent=S.sessions.length;
+  animateCountUp(document.getElementById('dash-total-min'),Math.round(totalMin),'',700);
+  animateCountUp(document.getElementById('dash-total-errors'),S.errors.length,'',600);
+  animateCountUp(document.getElementById('dash-total-acts'),S.activities.length,'',600);
+  animateCountUp(document.getElementById('dash-total-sess'),S.sessions.length,'',600);
   ['ge','pe','ms'].forEach(function(cat){
     var acc=catAccuracy(cat);
     var fillEl=document.getElementById('acc-fill-'+cat);
     var valEl=document.getElementById('acc-val-'+cat);
     if(acc!==null){
-      fillEl.style.width=Math.min(100,acc).toFixed(1)+'%';
+      setTimeout(function(){fillEl.style.width=Math.min(100,acc).toFixed(1)+'%';},100);
       valEl.textContent=acc.toFixed(1)+'%';
       valEl.style.color=accColor(acc);
     }else{fillEl.style.width='0%';valEl.textContent='—';}
@@ -1204,7 +1672,9 @@ function renderDashboard(){
   renderHeatmap();
 }
 
-/* ── CALENDAR ─────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   CALENDAR
+══════════════════════════════════════════════════════════════ */
 var calYear,calMonth;
 function initCal(){var now=new Date();calYear=now.getFullYear();calMonth=now.getMonth();}
 function getDayData(dk){
@@ -1295,7 +1765,9 @@ function openDayModal(dk){
 document.getElementById('modal-close').addEventListener('click',function(){document.getElementById('day-modal').classList.remove('open');});
 document.getElementById('day-modal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
 
-/* ── LOG TABS ─────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   LOG TABS
+══════════════════════════════════════════════════════════════ */
 document.querySelectorAll('.log-tab').forEach(function(tab){
   tab.addEventListener('click',function(){
     document.querySelectorAll('.log-tab').forEach(function(t){t.classList.remove('active');});
@@ -1305,7 +1777,9 @@ document.querySelectorAll('.log-tab').forEach(function(tab){
   });
 });
 
-/* ── PILL SELECTORS ───────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   PILL SELECTORS
+══════════════════════════════════════════════════════════════ */
 var sessSubject=null,actSubject=null,errSubject=null;
 function setupPills(selector,callback){
   var pills=document.querySelectorAll(selector);
@@ -1320,13 +1794,17 @@ setupPills('#log-pane-session .subject-pills .pill',function(s){sessSubject=s;})
 setupPills('#act-pills .pill',function(s){actSubject=s;});
 setupPills('#err-pills .pill',function(s){errSubject=s;});
 
-/* ── DEFAULT DATES ────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   DEFAULT DATES
+══════════════════════════════════════════════════════════════ */
 function setDefaultDates(){
   var t=today();
   ['sess-date','act-date','err-date'].forEach(function(id){var el=document.getElementById(id);if(el)el.value=t;});
 }
 
-/* ── TOAST ────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════════════════════ */
 function showToast(id,msg,ok){
   var el=document.getElementById(id);
   el.textContent=msg;
@@ -1335,7 +1813,9 @@ function showToast(id,msg,ok){
   el._t=setTimeout(function(){el.className='toast-msg';el.textContent='';},4000);
 }
 
-/* ── LOG SESSION ──────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   LOG SESSION
+══════════════════════════════════════════════════════════════ */
 document.getElementById('btn-log-session').addEventListener('click',function(){
   if(!sessSubject){showToast('sess-toast','Please select a subject.',false);return;}
   var name=(document.getElementById('sess-name').value||'').trim()||'Practice Session';
@@ -1349,7 +1829,12 @@ document.getElementById('btn-log-session').addEventListener('click',function(){
   if(correct<0||wrong<0){showToast('sess-toast','Values cannot be negative.',false);return;}
   S.sessions.push({id:Date.now(),cat:sessSubject,name:name,total:total,correct:correct,wrong:wrong,min:min?parseFloat(min):null,date:date});
   save();fullRender();
-  showToast('sess-toast','Session logged — '+(total>0?(correct/total*100).toFixed(1):0)+'% accuracy',true);
+  var acc=total>0?(correct/total*100).toFixed(1):0;
+  showToast('sess-toast','Session logged — '+acc+'% accuracy',true);
+  // pulse button
+  var btn=document.getElementById('btn-log-session');
+  btn.classList.add('success-pulse');
+  setTimeout(function(){btn.classList.remove('success-pulse');},600);
   document.getElementById('sess-name').value='';
   document.getElementById('sess-correct').value='';
   document.getElementById('sess-wrong').value='';
@@ -1362,7 +1847,9 @@ document.getElementById('btn-reset-session').addEventListener('click',function()
   document.querySelectorAll('#log-pane-session .subject-pills .pill').forEach(function(p){p.classList.remove('active');});
 });
 
-/* ── LOG ACTIVITY ─────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   LOG ACTIVITY
+══════════════════════════════════════════════════════════════ */
 document.getElementById('btn-log-activity').addEventListener('click',function(){
   if(!actSubject){showToast('act-toast','Please select a subject.',false);return;}
   var type=document.getElementById('act-type').value;
@@ -1373,6 +1860,9 @@ document.getElementById('btn-log-activity').addEventListener('click',function(){
   S.activities.push({id:Date.now(),cat:actSubject,type:type,min:min,date:date,notes:notes});
   save();fullRender();
   showToast('act-toast','Activity logged — '+Math.round(min)+' minutes',true);
+  var btn=document.getElementById('btn-log-activity');
+  btn.classList.add('success-pulse');
+  setTimeout(function(){btn.classList.remove('success-pulse');},600);
   document.getElementById('act-min').value='';
   document.getElementById('act-notes').value='';
 });
@@ -1383,7 +1873,9 @@ document.getElementById('btn-reset-activity').addEventListener('click',function(
   document.querySelectorAll('#act-pills .pill').forEach(function(p){p.classList.remove('active');});
 });
 
-/* ── LOG ERROR ────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   LOG ERROR
+══════════════════════════════════════════════════════════════ */
 document.getElementById('btn-log-error').addEventListener('click',function(){
   if(!errSubject){showToast('err-toast','Please select a subject.',false);return;}
   var topic=(document.getElementById('err-topic').value||'').trim();
@@ -1403,7 +1895,9 @@ document.getElementById('btn-reset-error').addEventListener('click',function(){
   document.querySelectorAll('#err-pills .pill').forEach(function(p){p.classList.remove('active');});
 });
 
-/* ── HISTORY ──────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   HISTORY
+══════════════════════════════════════════════════════════════ */
 var hFilter='all';
 function renderHistory(){
   var list=document.getElementById('history-list');
@@ -1455,7 +1949,9 @@ document.querySelectorAll('[data-hfilter]').forEach(function(btn){
   });
 });
 
-/* ── ERROR PANE ───────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   ERROR PANE
+══════════════════════════════════════════════════════════════ */
 var eFilter='all';
 function renderErrorPane(){
   var topicMap={};
@@ -1503,7 +1999,9 @@ document.querySelectorAll('[data-efilter]').forEach(function(btn){
   });
 });
 
-/* ── NAVIGATION ───────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   NAVIGATION
+══════════════════════════════════════════════════════════════ */
 function closeSidebar(){
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sidebar-overlay').classList.remove('open');
@@ -1516,7 +2014,8 @@ function navigateTo(pane){
   var mobBtn=document.querySelector('.mob-nav-btn[data-pane="'+pane+'"]');
   if(mobBtn)mobBtn.classList.add('active');
   document.querySelectorAll('.pane').forEach(function(p){p.classList.remove('active');});
-  document.getElementById('pane-'+pane).classList.add('active');
+  var target=document.getElementById('pane-'+pane);
+  target.classList.add('active');
   if(pane==='calendar')renderCalendar();
   if(pane==='history')renderHistory();
   if(pane==='errors')renderErrorPane();
@@ -1534,11 +2033,26 @@ document.getElementById('hamburger').addEventListener('click',function(){
 });
 document.getElementById('sidebar-overlay').addEventListener('click',closeSidebar);
 
-/* ── FULL RENDER ──────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   FULL RENDER
+══════════════════════════════════════════════════════════════ */
 function fullRender(){renderDashboard();renderHistory();renderErrorPane();renderCalendar();}
 
-/* ── INIT ─────────────────────────────────────────────────────── */
-load();initCal();setDefaultDates();fullRender();
+/* ══════════════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════════════ */
+load();
+initCal();
+setDefaultDates();
+_lastRankLevel=-1; // reset so no rankup fires on initial load
+fullRender();
+_lastRankLevel=getXPRank(computeXP(),overallAccuracy(),catAccuracy('ge'),catAccuracy('pe'),catAccuracy('ms'),computeStreak()).level;
+
+// Show onboarding for first-time visitors
+if(!localStorage.getItem('lept_onboarded')){
+  setTimeout(showOnboarding,600);
+}
+
 })();
 </script>
 </body>
