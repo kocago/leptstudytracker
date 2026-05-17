@@ -456,7 +456,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
 
 /* ─── PANE ANIMATIONS ─────────────────────────────────────────── */
 .pane{display:none;padding:2.25rem 2.75rem;}
-.pane.active{display:block;}
+.pane.active{display:block !important;}
 .pane.animating{animation:paneIn 0.45s cubic-bezier(0.16,1,0.3,1);}
 @keyframes paneIn{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
 .pane.animating .card,.pane.animating .rank-card{
@@ -2480,8 +2480,14 @@ function navigateTo(pane){
   document.querySelectorAll('.mob-nav-btn').forEach(function(b){b.classList.remove('active');});
   var mobBtn=document.querySelector('.mob-nav-btn[data-pane="'+pane+'"]');
   if(mobBtn)mobBtn.classList.add('active');
-  document.querySelectorAll(".pane").forEach(function(p){p.classList.remove("active");p.classList.remove("animating");});
+  document.querySelectorAll(".pane").forEach(function(p){
+    p.classList.remove("active");
+    p.classList.remove("animating");
+    p.style.display='none';
+  });
   var target=document.getElementById('pane-'+pane);
+  if(!target)return;
+  target.style.display='block';
   target.classList.add("active");
   requestAnimationFrame(function(){requestAnimationFrame(function(){
     target.classList.add("animating");
@@ -2515,7 +2521,11 @@ function fullRender(){renderDashboard();renderHistory();renderErrorPane();render
 load();
 initCal();
 setDefaultDates();
-_lastRankLevel=-1; // reset so no rankup fires on initial load
+_lastRankLevel=-1;
+// Force dashboard visible on load
+document.querySelectorAll('.pane').forEach(function(p){p.style.display='none';});
+var dashPane=document.getElementById('pane-dashboard');
+dashPane.style.display='block';
 fullRender();
 // Fire entry animation on initial dashboard load
 requestAnimationFrame(function(){requestAnimationFrame(function(){
