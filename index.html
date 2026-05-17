@@ -142,7 +142,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
 .sidebar-footer{padding:0.9rem 1.4rem;font-size:0.63rem;color:var(--muted);font-family:'Space Mono',monospace;line-height:1.7;}
 
 /* ─── MOBILE OVERLAY ──────────────────────────────────────────── */
-.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:300;backdrop-filter:blur(3px);}
+.sidebar-overlay{display:none;}
 .sidebar{
   background:var(--bg2);border-right:1px solid var(--border);
   display:flex;flex-direction:column;
@@ -153,7 +153,7 @@ body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--tex
   transition:transform 0.55s cubic-bezier(0.16,1,0.3,1);
   z-index:2;
 }
-.sidebar-overlay.open{display:block;}
+.sidebar-overlay.open{display:block;pointer-events:none;}
 
 /* ─── PANE SYSTEM ─────────────────────────────────────────────── */
 .pane-header{
@@ -2213,7 +2213,7 @@ document.getElementById('btn-reset-error').addEventListener('click',function(){
    AI PERFORMANCE ANALYSIS — Gemini API
 ══════════════════════════════════════════════════════════════ */
 var GEMINI_API_KEY='AIzaSyBM11XGIP2K5iCw7Bljr_G5_zScttejxIQ';
-var GEMINI_URL='https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+GEMINI_API_KEY;
+var GEMINI_URL='https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key='+GEMINI_API_KEY;
 
 function buildAIPrompt(){
   var oa=overallAccuracy();
@@ -2497,9 +2497,13 @@ document.querySelectorAll('[data-efilter]').forEach(function(btn){
    NAVIGATION
 ══════════════════════════════════════════════════════════════ */
 function closeSidebar(){
-  if(window.innerWidth>900)return;
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('sidebar-overlay').classList.remove('open');
+}
+function openSidebar(){
+  if(window.innerWidth>900)return;
+  document.getElementById('sidebar').classList.add('open');
+  document.getElementById('sidebar-overlay').classList.add('open');
 }
 function navigateTo(pane){
   document.querySelectorAll('.nav-item').forEach(function(b){b.classList.remove('active');});
@@ -2533,11 +2537,39 @@ document.querySelectorAll('.mob-nav-btn').forEach(function(btn){
   btn.addEventListener('click',function(){navigateTo(btn.dataset.pane);});
 });
 document.getElementById('hamburger').addEventListener('click',function(){
-  document.getElementById('sidebar').classList.toggle('open');
-  if(window.innerWidth<=900)
-    document.getElementById('sidebar-overlay').classList.toggle('open');
+  if(document.getElementById('sidebar').classList.contains('open')){
+    closeSidebar();
+  } else {
+    openSidebar();
+  }
 });
 document.getElementById('sidebar-overlay').addEventListener('click',closeSidebar);
+// Tap content area to close sidebar on mobile
+document.querySelector('.content').addEventListener('click',function(){
+  if(window.innerWidth<=900 && document.getElementById('sidebar').classList.contains('open')){
+    closeSidebar();
+  }
+});
+
+// Force-close sidebar if window resizes to desktop
+window.addEventListener('resize',function(){
+  if(window.innerWidth>900){
+    document.getElementById('sidebar-overlay').classList.remove('open');
+    // Don't remove 'open' from sidebar on desktop — it's always visible
+  } else {
+    // On mobile, ensure overlay isn't orphaned
+    if(!document.getElementById('sidebar').classList.contains('open')){
+      document.getElementById('sidebar-overlay').classList.remove('open');
+    }
+  }
+});
+
+// On load: ensure sidebar and overlay are closed on mobile
+(function(){
+  if(window.innerWidth<=900){
+    closeSidebar();
+  }
+})();
 
 /* ══════════════════════════════════════════════════════════════
    FULL RENDER
