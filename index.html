@@ -1938,7 +1938,7 @@ function buildAIPrompt(){
   var topicsStr=topTopics.length>0?topTopics.map(function(t){return'"'+t.topic+'" ('+catFull(t.cat)+', '+t.count+'x errors)';}).join('; '):'None logged yet';
   var trendStr=trend===null?'Not enough data yet':(parseFloat(trend)>=0?'Improving (+'+trend+'% vs last week)':'Declining ('+trend+'% vs last week)');
   var reflections=S.sessions.filter(function(s){return s.reflection;}).sort(function(a,b){return b.date.localeCompare(a.date);}).slice(0,10).map(function(s){return'"'+s.date+' ('+catFull(s.cat)+'): '+s.reflection+'"';}).join('; ');
-  return 'You are a board exam coach helping a Filipino education student prepare for the LEPT.\n\nStudy data:\n- Overall accuracy: '+(oa!==null?oa.toFixed(1)+'%':'No sessions')+'\n- GE accuracy: '+(ge!==null?ge.toFixed(1)+'%':'No data')+' ('+geSess+' sessions)\n- PE accuracy: '+(pe!==null?pe.toFixed(1)+'%':'No data')+' ('+peSess+' sessions)\n- MS accuracy: '+(ms!==null?ms.toFixed(1)+'%':'No data')+' ('+msSess+' sessions)\n- Study streak: '+streak+' days\n- Active study weeks: '+weeks+'\n- Total XP: '+xp+' | Rank: '+rank.name+' (Level '+rank.level+'/12)\n- Total study time: '+Math.round(totalMin)+' minutes\n- Accuracy trend: '+trendStr+'\n- Most repeated error topics: '+topicsStr+'\n'+(reflections?'- Recent reflections: '+reflections+'\n':'')+'\nPassing mark: 75% overall, no subject below 75%.\n\nRespond ONLY with JSON (no markdown, no backticks):\n{"weak_areas":"...","focus_subject":"...","trend_insight":"...","recommendation":"...","encouragement":"..."}';
+  return 'You are a board exam coach helping a Filipino education student prepare for the LEPT.\n\nStudy data:\n- Overall accuracy: '+(oa!==null?oa.toFixed(1)+'%':'No sessions')+'\n- GE accuracy: '+(ge!==null?ge.toFixed(1)+'%':'No data')+' ('+geSess+' sessions)\n- PE accuracy: '+(pe!==null?pe.toFixed(1)+'%':'No data')+' ('+peSess+' sessions)\n- MS accuracy: '+(ms!==null?ms.toFixed(1)+'%':'No data')+' ('+msSess+' sessions)\n- Study streak: '+streak+' days\n- Active study weeks: '+weeks+'\n- Total XP: '+xp+' | Rank: '+rank.name+' (Level '+rank.level+'/12)\n- Total study time: '+Math.round(totalMin)+' minutes\n- Accuracy trend: '+trendStr+'\n- Most repeated error topics: '+topicsStr+'\n'+(reflections?'- Recent reflections: '+reflections+'\n':'')+'\nPassing mark: 75% overall, no subject below 75%.\n\nRespond ONLY with valid JSON, no markdown, no text outside the object. Max 2 sentences per value.\n{"weak_areas":"...","focus_subject":"...","trend_insight":"...","recommendation":"...","encouragement":"..."}';
 }
 
 function renderAIResult(json,suffix){
@@ -1953,7 +1953,7 @@ function runAIAnalysis(suffix){
   if(S.sessions.length===0&&S.errors.length===0){errEl.textContent='Log at least one session or error before running the analysis.';errEl.style.display='block';result.style.display='none';return;}
   btn.disabled=true;loading.style.display='flex';result.style.display='none';errEl.style.display='none';
   var prompt=buildAIPrompt();
-  fetch(GEMINI_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.7,maxOutputTokens:1024}})})
+  fetch(GEMINI_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.7,maxOutputTokens:2048}})})
   .then(function(r){return r.json();})
   .then(function(data){
     loading.style.display='none';btn.disabled=false;
