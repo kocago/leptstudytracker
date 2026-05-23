@@ -1957,10 +1957,21 @@ function runAIAnalysis(suffix){
   .then(function(r){return r.json();})
   .then(function(data){
     loading.style.display='none';btn.disabled=false;
+    console.log('[AI full response]',JSON.stringify(data).slice(0,600));
     var text='';
-    try{if(data.error)throw new Error('API error: '+data.error.message);text=data.candidates[0].content.parts[0].text.trim();}catch(e){throw new Error(e.message);}
-    text=text.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
-    var json;try{json=JSON.parse(text);}catch(e){throw new Error('Could not parse response as JSON');}
+    /* handle both Gemini native shape and possible worker wrapper */
+    try{
+      if(data.error)throw new Error('API error: '+data.error.message);
+      if(data.candidates)text=data.candidates[0].content.parts[0].text.trim();
+      else if(data.content)text=data.content.trim();
+      else if(data.text)text=data.text.trim();
+      else if(data.choices)text=data.choices[0].message.content.trim();
+      else throw new Error('Unknown response shape: '+JSON.stringify(data).slice(0,300));
+    }catch(e){throw new Error(e.message);}
+    console.log('[AI text]',text);
+    var jsonMatch=text.match(/\{[\s\S]*\}/);
+    if(!jsonMatch)throw new Error('No JSON in response. Model said: "'+text.slice(0,300)+'"');
+    var json;try{json=JSON.parse(jsonMatch[0]);}catch(e){throw new Error('Bad JSON: '+e.message);}
     renderAIResult(json,suffix);result.style.display='block';
   })
   .catch(function(err){loading.style.display='none';btn.disabled=false;errEl.textContent='Analysis failed: '+err.message+'. Please try again.';errEl.style.display='block';});
